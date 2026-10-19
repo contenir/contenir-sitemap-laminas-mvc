@@ -14,12 +14,19 @@ use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 
+use function filter_var;
 use function get_debug_type;
+use function is_string;
 use function sprintf;
+
+use const FILTER_VALIDATE_BOOLEAN;
 
 /**
  * Builds the SitemapController around the Sitemap helper of the
- * application's navigation view helper.
+ * application's navigation view helper, with the CMS's "site.sitemap.enabled"
+ * and "site.url" settings. The CMS writes its settings under "settings" in the
+ * site's config/autoload/settings.global.php and settings.local.php, so they
+ * arrive in the application's "config".
  *
  * @api
  */
@@ -56,6 +63,14 @@ final class SitemapControllerFactory
             ));
         }
 
-        return new SitemapController($sitemap);
+        $config  = $container->has('config') ? $container->get('config') : [];
+        $enabled = $config['settings']['site']['sitemap']['enabled'] ?? true;
+        $siteUrl = $config['settings']['site']['url'] ?? '';
+
+        return new SitemapController(
+            $sitemap,
+            enabled: filter_var($enabled, FILTER_VALIDATE_BOOLEAN),
+            siteUrl: is_string($siteUrl) ? $siteUrl : '',
+        );
     }
 }

@@ -14,14 +14,18 @@ use Laminas\Stdlib\RequestInterface;
 use Laminas\Stdlib\Response;
 use Laminas\Stdlib\ResponseInterface;
 use Laminas\View\Helper\Navigation\Sitemap;
+use Laminas\View\Model\ViewModel;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function get_debug_type;
+
 #[CoversClass(SitemapController::class)]
 #[Group('unit')]
+#[Group('controller')]
 final class SitemapControllerTest extends TestCase
 {
     /**
@@ -52,6 +56,26 @@ final class SitemapControllerTest extends TestCase
     }
 
     #[Test]
+    public function answersNotFoundWithoutRenderingWhenTheSitemapIsDisabled(): void
+    {
+        $sitemap = $this->createMock(Sitemap::class);
+        $sitemap->expects(static::never())->method('render');
+
+        $controller = new SitemapController($sitemap, enabled: false);
+        $controller->getEvent()->setRouteMatch(new RouteMatch(['action' => 'index']));
+        $response = new HttpResponse();
+
+        static::assertSame(
+            [ViewModel::class, 404, ''],
+            [
+                get_debug_type($controller->dispatch(new HttpRequest(), $response)),
+                $response->getStatusCode(),
+                $response->getContent(),
+            ],
+        );
+    }
+
+    #[Test]
     #[DataProvider('nonHttpProvider')]
     public function refusesToServeOutsideHttp(
         string $action,
@@ -66,10 +90,11 @@ final class SitemapControllerTest extends TestCase
     }
 
     #[Test]
-    public function rendersTheCmsContainerWithTheSitemapHelper(): void
+    public function rendersTheCmsContainerIncludingPagesHiddenFromTheMenu(): void
     {
         $sitemap = $this->createMock(Sitemap::class);
         $sitemap->expects(static::once())->method('setContainer')->with('cms')->willReturnSelf();
+        $sitemap->expects(static::once())->method('setRenderInvisible')->with(true)->willReturnSelf();
         $sitemap->method('render')->willReturn('<urlset/>');
 
         $response = $this->dispatch(new SitemapController($sitemap), 'index', new HttpRequest(), new HttpResponse());

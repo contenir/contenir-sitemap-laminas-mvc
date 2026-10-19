@@ -36,18 +36,28 @@ The module adds two routes, both served by `SitemapController`:
 | `sitemap` | `/sitemap.xml` | `application/xml`: the `cms` navigation container, rendered by laminas-view's `navigation()->sitemap()` helper |
 | `robots` | `/robots.txt` | `text/plain`, as below |
 
+The sitemap lists every page in the `cms` container, including pages hidden
+from the menu (`visible` false). Which pages are in the container at all is
+up to whatever builds it: inactive, unpublished or expired pages must be left
+out there.
+
 ```text
 # robots.txt for https://www.example.com/
 
 User-agent: *
 Allow: /
-Disallow: /.well-known/
 
 Sitemap: https://www.example.com/sitemap.xml
 ```
 
-The scheme and host come from the request, and the paths from the `home`
-and `sitemap` routes.
+The scheme, host and port come from the site URL setting (below), and the
+paths from the `home` and `sitemap` routes. Only when no usable site URL is
+set does robots.txt fall back to the request's scheme and `Host` header,
+which a client can spoof: set the site URL on every live site.
+
+With the sitemap disabled, `/sitemap.xml` answers 404 through laminas-mvc's
+`notFoundAction()`, so the site's usual not-found page is shown, and
+robots.txt has no `Sitemap:` line.
 
 ## Configuration
 
@@ -62,6 +72,37 @@ The application must provide:
   registers in the `ViewHelperManager`.
 
 Override either route in your own router configuration to move it.
+
+### CMS settings
+
+The module reads two Contenir CMS settings from the application's `config`
+service. The CMS saves its settings under a `settings` key in the site's
+`config/autoload/settings.global.php`, and its changes in
+`settings.local.php`, which laminas-mvc merges into `config` along with the
+rest of `config/autoload`:
+
+| Setting | CMS field | Effect |
+| --- | --- | --- |
+| `settings.site.sitemap.enabled` | Enable Sitemap | Off (`'0'`, as the CMS saves a cleared box, or `false`) disables the sitemap. Unset, the sitemap is enabled, as before this setting was honoured. |
+| `settings.site.url` | Site URL | The site's URL, such as `https://www.example.com`, that robots.txt links from. Only its scheme, host and port are used. |
+
+A site without the CMS, or whose CMS settings file is not in
+`config/autoload`, can set them in its own configuration:
+
+```php
+// config/autoload/sitemap.global.php
+return [
+    'settings' => [
+        'site' => [
+            'url'     => 'https://www.example.com',
+            'sitemap' => ['enabled' => true],
+        ],
+    ],
+];
+```
+
+With laminas-mvc's configuration cache on (`config_cache_enabled`), clear it
+after changing either setting.
 
 ## Development
 
