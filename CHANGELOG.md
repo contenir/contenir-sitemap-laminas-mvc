@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-10-19
+
+### Added
+
+- The CMS's "Enable Sitemap" setting, `settings.site.sitemap.enabled`, is
+  honoured. Turned off, `/sitemap.xml` answers 404 and robots.txt has no
+  `Sitemap:` line. Unset, the sitemap stays enabled.
+
+### Changed
+
+- robots.txt builds its links from the CMS's site URL setting,
+  `settings.site.url`, instead of the request's `Host` header, which a client
+  can spoof. Without a usable site URL it falls back to the request, as
+  before.
+
+### Fixed
+
+- Pages hidden from the menu (`visible` false) are listed in the sitemap.
+  laminas-view's Sitemap helper skipped them.
+- robots.txt no longer disallows `/.well-known/`, which kept crawlers from
+  paths such as `/.well-known/security.txt`.
+
 ## [2.1.0] - 2026-10-05
 
 ### Changed
